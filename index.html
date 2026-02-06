@@ -397,41 +397,6 @@
     box-shadow: 0 2px 12px rgba(244,114,182,0.4);
   }
 
-  /* Play Book button */
-  #play-book-btn {
-    position: absolute;
-    top: 16px;
-    right: 70px;
-    height: 56px;
-    padding: 0 20px;
-    border-radius: 28px;
-    border: 3px solid rgba(255,255,255,0.3);
-    background: rgba(0,0,0,0.4);
-    backdrop-filter: blur(8px);
-    color: #fff;
-    font-size: 13px;
-    font-weight: 800;
-    font-family: inherit;
-    cursor: pointer;
-    z-index: 10;
-    display: none;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s;
-    letter-spacing: 0.5px;
-  }
-  #play-book-btn.visible { display: flex; }
-  #play-book-btn:active { transform: scale(0.93); }
-  #play-book-btn .icon { font-size: 20px; }
-  #play-book-btn .page-count {
-    background: var(--pink);
-    color: #fff;
-    border-radius: 10px;
-    padding: 2px 8px;
-    font-size: 12px;
-    font-weight: 800;
-  }
-
   /* Page counter badge on capture button */
   #page-badge {
     position: absolute;
@@ -450,6 +415,29 @@
     cursor: pointer;
   }
   #page-badge.visible { display: block; }
+
+  /* Play Book button — below page badge */
+  #play-book-btn {
+    position: absolute;
+    bottom: 136px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--purple);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 4px 12px;
+    border-radius: 12px;
+    border: none;
+    font-family: inherit;
+    z-index: 10;
+    display: none;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(167,139,250,0.3);
+    white-space: nowrap;
+  }
+  #play-book-btn.visible { display: block; }
+  #play-book-btn:active { transform: translateX(-50%) scale(0.93); }
 
   /* Captured image display */
   #captured-img {
@@ -1002,20 +990,22 @@
       line-height: 1.6;
     }
 
-    /* Play book button in landscape */
-    #play-book-btn {
-      top: 8px;
-      right: 62px;
-      height: 44px;
-      font-size: 11px;
-    }
+    /* Page badge and play book in landscape */
     #page-badge {
       bottom: auto;
-      top: 50%;
+      top: calc(50% - 50px);
       left: auto;
       right: 96px;
-      transform: translateY(calc(-50% - 40px));
+      transform: none;
     }
+    #play-book-btn {
+      bottom: auto;
+      top: calc(50% - 76px);
+      left: auto;
+      right: 96px;
+      transform: none;
+    }
+    #play-book-btn:active { transform: scale(0.93); }
 
     /* Status overlay */
     #status {
@@ -1066,9 +1056,6 @@
 
   <!-- Play full book button -->
   <button id="play-book-btn" title="Play full book">
-    <span class="icon">📚</span>
-    <span>PLAY BOOK</span>
-    <span class="page-count" id="book-page-count">0</span>
   </button>
 
   <!-- Repeat last page button -->
@@ -1240,7 +1227,6 @@ const apiKeyOverlay = $('#api-key-overlay');
 const narrationOverlay = $('#narration-overlay');
 const repeatBtn = $('#repeat-btn');
 const playBookBtn = $('#play-book-btn');
-const bookPageCount = $('#book-page-count');
 const pageBadge = $('#page-badge');
 const capturedImg = $('#captured-img');
 
@@ -1307,7 +1293,7 @@ function captureFrame() {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   ctx.drawImage(video, 0, 0);
-  return canvas.toDataURL('image/jpeg', 0.8);
+  return canvas.toDataURL('image/jpeg', 0.6);
 }
 
 function flashEffect() {
@@ -1349,15 +1335,14 @@ function showIdleUI() {
   if (lastAudioBuffer) {
     repeatBtn.classList.add('visible');
   }
-  // Show play book button if we have 2+ pages
-  if (bookPages.length >= 2) {
-    playBookBtn.classList.add('visible');
-    bookPageCount.textContent = bookPages.length;
-  }
-  // Show page count badge
+  // Show page count badge and play book button
   if (bookPages.length > 0) {
-    pageBadge.textContent = `${bookPages.length} page${bookPages.length > 1 ? 's' : ''} saved`;
+    pageBadge.textContent = `${bookPages.length} page${bookPages.length > 1 ? 's' : ''} captured`;
     pageBadge.classList.add('visible');
+  }
+  if (bookPages.length >= 2) {
+    playBookBtn.textContent = `▶ Play all ${bookPages.length} pages`;
+    playBookBtn.classList.add('visible');
   }
 }
 
@@ -1548,7 +1533,7 @@ ${langInstruction}`
           content: [
             {
               type: 'image_url',
-              image_url: { url: `data:image/jpeg;base64,${base64Image}`, detail: 'high' }
+              image_url: { url: `data:image/jpeg;base64,${base64Image}`, detail: 'low' }
             },
             {
               type: 'text',
