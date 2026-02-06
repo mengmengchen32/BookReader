@@ -447,6 +447,7 @@
     z-index: 10;
     display: none;
     box-shadow: 0 2px 8px rgba(244,114,182,0.3);
+    cursor: pointer;
   }
   #page-badge.visible { display: block; }
 
@@ -465,32 +466,226 @@
   }
   #captured-img.visible { display: block; }
 
-  /* Word highlight overlays */
-  #word-overlays {
+  /* Page editor panel */
+  #page-editor {
+    position: absolute;
+    inset: 0;
+    background: var(--bg-warm);
+    z-index: 20;
+    display: none;
+    flex-direction: column;
+    padding: 16px;
+    padding-top: 64px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  #page-editor.visible { display: flex; }
+
+  .editor-header {
     position: absolute;
     top: 0;
     left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-warm);
+    z-index: 1;
+    gap: 12px;
+  }
+  #close-editor {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .editor-header h2 {
+    flex: 1;
+    font-size: 20px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+  }
+  #save-book-btn {
+    padding: 10px 20px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(244,114,182,0.3);
+    transition: transform 0.1s;
+  }
+  #save-book-btn:active { transform: scale(0.95); }
+
+  #page-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .page-thumb {
+    position: relative;
+    aspect-ratio: 3/4;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.3);
+  }
+  .page-thumb img {
     width: 100%;
     height: 100%;
-    z-index: 4;
-    pointer-events: none;
-    display: none;
+    object-fit: cover;
   }
-  #word-overlays.visible { display: block; }
-
-  .text-highlight {
+  .page-thumb .page-num {
     position: absolute;
-    border-radius: 6px;
-    pointer-events: none;
-    background: rgba(244, 114, 182, 0.0);
-    transition: background 0.4s, box-shadow 0.4s;
+    bottom: 4px;
+    left: 4px;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 8px;
   }
-  .text-highlight.active {
-    background: rgba(244, 114, 182, 0.35);
-    box-shadow: 0 0 20px rgba(244, 114, 182, 0.5), inset 0 0 8px rgba(244, 114, 182, 0.15);
+  .page-thumb .delete-page {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,77,77,0.9);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  .text-highlight.read {
-    background: rgba(244, 114, 182, 0.12);
+  .page-thumb .delete-page:active { transform: scale(0.9); }
+
+  /* Save book dialog */
+  #save-book-dialog {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    z-index: 25;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  #save-book-dialog.visible { display: flex; }
+
+  .save-dialog-content {
+    background: var(--bg-card);
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 400px;
+    border: 2px solid rgba(255,255,255,0.1);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .save-dialog-content h3 {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  #book-name-input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 2px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.3);
+    color: #fff;
+    font-size: 16px;
+    font-family: inherit;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  #book-name-input:focus {
+    outline: none;
+    border-color: var(--pink);
+  }
+  .cover-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+  #cover-selector {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .cover-option {
+    width: 60px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 3px solid transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .cover-option.selected {
+    border-color: var(--pink);
+    box-shadow: 0 0 12px rgba(244,114,182,0.4);
+  }
+  .cover-option img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .dialog-actions {
+    display: flex;
+    gap: 12px;
+  }
+  .dialog-actions button {
+    flex: 1;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
+    font-weight: 800;
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .dialog-actions button:active { transform: scale(0.97); }
+  #cancel-save {
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.7);
+  }
+  #confirm-save {
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(244,114,182,0.3);
   }
 
   /* Flash effect on capture */
@@ -835,7 +1030,6 @@
   <video id="video" autoplay playsinline muted></video>
   <canvas id="canvas"></canvas>
   <img id="captured-img" alt="">
-  <div id="word-overlays"></div>
   <div id="flash"></div>
   <div id="camera-frame"></div>
 
@@ -958,6 +1152,30 @@
     <button id="save-api-key">Save Settings</button>
   </div>
 
+  <!-- Page editor panel -->
+  <div id="page-editor">
+    <div class="editor-header">
+      <button id="close-editor">&times;</button>
+      <h2>Edit Pages</h2>
+      <button id="save-book-btn">Save Book</button>
+    </div>
+    <div id="page-grid"></div>
+  </div>
+
+  <!-- Save book dialog -->
+  <div id="save-book-dialog">
+    <div class="save-dialog-content">
+      <h3>Save Book</h3>
+      <input type="text" id="book-name-input" placeholder="Enter book name..." autocomplete="off">
+      <div class="cover-label">Choose Cover</div>
+      <div id="cover-selector"></div>
+      <div class="dialog-actions">
+        <button id="cancel-save">Cancel</button>
+        <button id="confirm-save">Save</button>
+      </div>
+    </div>
+  </div>
+
   <!-- API key first-run prompt -->
   <div id="api-key-overlay">
     <div class="dot dot-1"></div>
@@ -986,7 +1204,6 @@ let bookPages = []; // Array of {text, audioBuffer} for full book playback
 let isPlayingBook = false;
 let bookPlaybackIndex = 0;
 let lastImageDataUrl = null;
-let lastTextBlocks = null;
 
 // Auto page detection state
 let autoMode = false;
@@ -1026,7 +1243,6 @@ const playBookBtn = $('#play-book-btn');
 const bookPageCount = $('#book-page-count');
 const pageBadge = $('#page-badge');
 const capturedImg = $('#captured-img');
-const wordOverlays = $('#word-overlays');
 
 // --- Init ---
 function init() {
@@ -1222,24 +1438,9 @@ function clearHighlightTimers() {
   highlightTimers = [];
 }
 
-// --- Captured image & highlights ---
-function showCapturedImage(dataUrl, pageBounds) {
-  if (pageBounds) {
-    // Crop to page bounds using the capture canvas
-    const srcW = canvas.width;
-    const srcH = canvas.height;
-    const sx = (pageBounds.left / 100) * srcW;
-    const sy = (pageBounds.top / 100) * srcH;
-    const sw = ((pageBounds.right - pageBounds.left) / 100) * srcW;
-    const sh = ((pageBounds.bottom - pageBounds.top) / 100) * srcH;
-    const cropCanvas = document.createElement('canvas');
-    cropCanvas.width = sw;
-    cropCanvas.height = sh;
-    cropCanvas.getContext('2d').drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
-    capturedImg.src = cropCanvas.toDataURL('image/jpeg', 0.9);
-  } else {
-    capturedImg.src = dataUrl;
-  }
+// --- Captured image ---
+function showCapturedImage(dataUrl) {
+  capturedImg.src = dataUrl;
   capturedImg.classList.add('visible');
   $('#camera-frame').style.display = 'none';
   $('#top-bar').style.display = 'none';
@@ -1247,79 +1448,8 @@ function showCapturedImage(dataUrl, pageBounds) {
 
 function hideCapturedImage() {
   capturedImg.classList.remove('visible');
-  wordOverlays.classList.remove('visible');
-  wordOverlays.innerHTML = '';
   $('#camera-frame').style.display = '';
   $('#top-bar').style.display = '';
-}
-
-function getImageRenderBounds() {
-  if (!capturedImg.naturalWidth || !capturedImg.naturalHeight) return null;
-  const cW = capturedImg.clientWidth;
-  const cH = capturedImg.clientHeight;
-  const nW = capturedImg.naturalWidth;
-  const nH = capturedImg.naturalHeight;
-  const imgRatio = nW / nH;
-  const cRatio = cW / cH;
-  let rW, rH, oX, oY;
-  if (imgRatio > cRatio) {
-    rW = cW; rH = cW / imgRatio; oX = 0; oY = (cH - rH) / 2;
-  } else {
-    rH = cH; rW = cH * imgRatio; oX = (cW - rW) / 2; oY = 0;
-  }
-  return { rW, rH, oX, oY };
-}
-
-function createTextHighlights(textBlocks, duration) {
-  wordOverlays.innerHTML = '';
-  const bounds = getImageRenderBounds();
-  if (!bounds || !textBlocks || textBlocks.length === 0) return;
-
-  textBlocks.forEach((block, i) => {
-    const el = document.createElement('div');
-    el.className = 'text-highlight';
-    el.dataset.idx = i;
-    el.style.left = (bounds.oX + (block.left / 100) * bounds.rW) + 'px';
-    el.style.top = (bounds.oY + (block.top / 100) * bounds.rH) + 'px';
-    el.style.width = ((block.width / 100) * bounds.rW) + 'px';
-    el.style.height = ((block.height / 100) * bounds.rH) + 'px';
-    wordOverlays.appendChild(el);
-  });
-
-  wordOverlays.classList.add('visible');
-  animateHighlights(textBlocks, duration);
-}
-
-function animateHighlights(textBlocks, duration) {
-  clearHighlightTimers();
-  if (!textBlocks || textBlocks.length === 0) return;
-
-  const totalChars = textBlocks.reduce((sum, b) => sum + b.text.length, 0);
-  let elapsed = 0;
-
-  textBlocks.forEach((block, i) => {
-    const blockDuration = (block.text.length / totalChars) * duration * 1000;
-    const timer = setTimeout(() => {
-      const prev = wordOverlays.querySelector('.text-highlight.active');
-      if (prev) {
-        prev.classList.remove('active');
-        prev.classList.add('read');
-      }
-      const el = wordOverlays.querySelector(`[data-idx="${i}"]`);
-      if (el) el.classList.add('active');
-    }, elapsed);
-    highlightTimers.push(timer);
-    elapsed += blockDuration;
-  });
-
-  const endTimer = setTimeout(() => {
-    const last = wordOverlays.querySelector('.text-highlight.active');
-    if (last) {
-      last.classList.remove('active');
-      last.classList.add('read');
-    }
-  }, duration * 1000);
-  highlightTimers.push(endTimer);
 }
 
 // --- Main flow ---
@@ -1344,17 +1474,11 @@ async function processPage() {
   showStatus('Reading the page...');
 
   try {
-    // Step 1: GPT-4o Vision — read, narrate, and get word positions
-    const result = await getNarration(base64Image);
-    if (!result || !result.narration) throw new Error('Could not read the page');
+    // Step 1: GPT-4o Vision — read and narrate
+    const narration = await getNarration(base64Image);
+    if (!narration) throw new Error('Could not read the page');
 
-    lastNarrationText = result.narration;
-    lastTextBlocks = result.text_blocks || [];
-
-    // Crop to page bounds if available
-    if (result.page_bounds) {
-      showCapturedImage(imageData, result.page_bounds);
-    }
+    lastNarrationText = narration;
     // Save the displayed image URL for replay
     lastImageDataUrl = capturedImg.src;
 
@@ -1362,7 +1486,7 @@ async function processPage() {
     showReadingUI();
 
     // Step 2: TTS — speak the narration
-    await speakNarration(result.narration, lastTextBlocks);
+    await speakNarration(narration);
 
   } catch (err) {
     console.error(err);
@@ -1401,25 +1525,11 @@ async function getNarration(base64Image) {
     },
     body: JSON.stringify({
       model: 'gpt-4o',
-      max_tokens: 4096,
-      response_format: { type: 'json_object' },
+      max_tokens: 2048,
       messages: [
         {
           role: 'system',
-          content: `You are the world's most DRAMATIC children's book storyteller reading to Hunter, a 3-year-old. Return a JSON object with this EXACT structure:
-
-{
-  "narration": "Your dramatic reading here...",
-  "page_bounds": {"top": 5, "left": 3, "bottom": 95, "right": 97},
-  "text_blocks": [
-    {"text": "Once upon a time", "top": 20, "left": 10, "width": 80, "height": 8}
-  ]
-}
-
-FIELDS:
-- "narration": Your theatrical, expressive reading of ALL text on the page. This goes to text-to-speech so make it ALIVE!
-- "page_bounds": Where the actual book page is in the photo — {top, left, bottom, right} as percentages (0-100) of the FULL IMAGE. This crops out the table/background around the book.
-- "text_blocks": Every visible text region on the page, in reading order. Coordinates (top, left, width, height) are percentages (0-100) RELATIVE TO THE PAGE BOUNDS (not the full photo). Top-left corner of the page = 0,0.
+          content: `You are the world's most DRAMATIC children's book storyteller reading to Hunter, a 3-year-old.
 
 NARRATION RULES — You are PERFORMING, not just reading!
 1. Read EVERY SINGLE WORD — headers, body, speech bubbles, captions. Never skip!
@@ -1428,14 +1538,8 @@ NARRATION RULES — You are PERFORMING, not just reading!
 4. NEVER let the drama fade — every sentence at MAXIMUM theatrical energy!
 5. Format for TTS: "..." for suspense, "!" for excitement, CAPITALIZE for emphasis, stretch words like "huuuuge" and "sloooowly", "—" for dramatic pauses.
 6. Add reactions: "Ohhh!", "Wooow!", "Oh noooo!" where the text calls for them.
-7. Each sentence on its own line in the narration.
+7. Each sentence on its own line.
 8. Whispered parts: lowercase with spaces: "and   then...   very   quietly..."
-
-TEXT_BLOCKS RULES:
-- Include ALL visible text — titles, body text, labels, speech bubbles, page numbers
-- Each block = one line or logical text group
-- Be PRECISE with bounding boxes — they will be drawn as highlights on the image
-- Coordinates are relative to the PAGE area (after cropping to page_bounds)
 
 ${langInstruction}`
         },
@@ -1448,7 +1552,7 @@ ${langInstruction}`
             },
             {
               type: 'text',
-              text: 'Read this book page with maximum drama! Return JSON with narration, page_bounds, and text_blocks.'
+              text: 'Read this book page with maximum drama!'
             }
           ]
         }
@@ -1463,14 +1567,7 @@ ${langInstruction}`
 
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content?.trim();
-  if (!content) return null;
-
-  try {
-    return JSON.parse(content);
-  } catch (e) {
-    // Fallback: treat as plain text (old format)
-    return { narration: content, text_blocks: [], page_bounds: null };
-  }
+  return content || null;
 }
 
 // --- TTS Providers ---
@@ -1535,7 +1632,7 @@ async function elevenLabsTTS(text) {
 }
 
 // --- TTS Orchestration ---
-async function speakNarration(text, textBlocks) {
+async function speakNarration(text) {
   const provider = localStorage.getItem('tts_provider') || 'openai';
 
   let arrayBuffer;
@@ -1545,38 +1642,38 @@ async function speakNarration(text, textBlocks) {
     arrayBuffer = await openaiTTS(text);
   }
 
+  // Clone raw audio before decoding (decodeAudioData consumes the buffer)
+  const rawAudioData = arrayBuffer.slice(0);
+
   return new Promise((resolve, reject) => {
     audioCtx.decodeAudioData(arrayBuffer, (audioBuffer) => {
       // Store for replay
       lastAudioBuffer = audioBuffer;
 
-      // Save page to book history (with image and text blocks)
-      bookPages.push({ text, audioBuffer, imageDataUrl: lastImageDataUrl, textBlocks: textBlocks || [] });
+      // Save page to book history (with raw audio for persistence)
+      bookPages.push({ text, audioBuffer, rawAudioData, imageDataUrl: lastImageDataUrl });
 
-      playAudioBuffer(audioBuffer, text, resolve, textBlocks);
+      playAudioBuffer(audioBuffer, text, resolve);
     }, (err) => {
       reject(new Error('Audio decode failed'));
     });
   });
 }
 
-function playAudioBuffer(audioBuffer, text, onDone, textBlocks) {
+function playAudioBuffer(audioBuffer, text, onDone) {
   // Stop any currently playing audio
   if (currentAudio) {
     try { currentAudio.stop(); } catch(e) {}
     currentAudio = null;
   }
-  clearHighlightTimers();
 
   const source = audioCtx.createBufferSource();
   source.buffer = audioBuffer;
   source.connect(audioCtx.destination);
   currentAudio = source;
 
-  // Show highlights on captured image, or fallback to text overlay
-  if (textBlocks && textBlocks.length > 0 && capturedImg.classList.contains('visible')) {
-    createTextHighlights(textBlocks, audioBuffer.duration);
-  } else if (text) {
+  // Show narration text overlay
+  if (text) {
     showNarration(text, audioBuffer.duration);
   }
 
@@ -1617,7 +1714,7 @@ function replayLastPage() {
   playAudioBuffer(lastAudioBuffer, lastNarrationText, () => {
     isProcessing = false;
     showIdleUI();
-  }, lastTextBlocks);
+  });
 }
 
 // --- Play Full Book ---
@@ -1651,7 +1748,7 @@ function playNextBookPage() {
   playAudioBuffer(page.audioBuffer, page.text, () => {
     bookPlaybackIndex++;
     setTimeout(() => playNextBookPage(), 800);
-  }, page.textBlocks);
+  });
 }
 
 // --- Auto page detection ---
@@ -1747,6 +1844,157 @@ function toggleAutoMode() {
   }
 }
 
+// --- Book Storage (IndexedDB) ---
+const DB_NAME = 'BookReaderDB';
+const DB_VERSION = 1;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('books')) {
+        db.createObjectStore('books', { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveBookToDB(book) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('books', 'readwrite');
+    tx.objectStore('books').put(book);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function loadBooksFromDB() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('books', 'readonly');
+    const req = tx.objectStore('books').getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// --- Page Editor ---
+const pageEditor = $('#page-editor');
+const pageGrid = $('#page-grid');
+
+function openPageEditor() {
+  renderPageGrid();
+  pageEditor.classList.add('visible');
+}
+
+function closePageEditor() {
+  pageEditor.classList.remove('visible');
+}
+
+function renderPageGrid() {
+  if (bookPages.length === 0) {
+    pageGrid.innerHTML = '<p style="color:rgba(255,255,255,0.5);text-align:center;grid-column:1/-1;padding:40px 0;">No pages captured yet.</p>';
+    return;
+  }
+  pageGrid.innerHTML = bookPages.map((page, i) => `
+    <div class="page-thumb" data-idx="${i}">
+      <img src="${page.imageDataUrl}" alt="Page ${i + 1}">
+      <span class="page-num">${i + 1}</span>
+      <button class="delete-page" data-idx="${i}">&times;</button>
+    </div>
+  `).join('');
+}
+
+function deletePage(index) {
+  bookPages.splice(index, 1);
+  if (bookPages.length > 0) {
+    const last = bookPages[bookPages.length - 1];
+    lastNarrationText = last.text;
+    lastAudioBuffer = last.audioBuffer;
+    lastImageDataUrl = last.imageDataUrl;
+  } else {
+    lastNarrationText = null;
+    lastAudioBuffer = null;
+    lastImageDataUrl = null;
+  }
+  renderPageGrid();
+}
+
+pageGrid.addEventListener('click', (e) => {
+  const deleteBtn = e.target.closest('.delete-page');
+  if (deleteBtn) {
+    deletePage(parseInt(deleteBtn.dataset.idx));
+  }
+});
+
+// --- Save Book ---
+const saveBookDialog = $('#save-book-dialog');
+const coverSelector = $('#cover-selector');
+let selectedCoverIndex = 0;
+
+function openSaveBookDialog() {
+  if (bookPages.length === 0) return;
+  $('#book-name-input').value = '';
+  selectedCoverIndex = 0;
+  coverSelector.innerHTML = bookPages.map((page, i) => `
+    <div class="cover-option ${i === 0 ? 'selected' : ''}" data-idx="${i}">
+      <img src="${page.imageDataUrl}" alt="Page ${i + 1}">
+    </div>
+  `).join('');
+  saveBookDialog.classList.add('visible');
+}
+
+function closeSaveBookDialog() {
+  saveBookDialog.classList.remove('visible');
+}
+
+coverSelector.addEventListener('click', (e) => {
+  const option = e.target.closest('.cover-option');
+  if (!option) return;
+  coverSelector.querySelectorAll('.cover-option').forEach(o => o.classList.remove('selected'));
+  option.classList.add('selected');
+  selectedCoverIndex = parseInt(option.dataset.idx);
+});
+
+async function confirmSaveBook() {
+  const name = $('#book-name-input').value.trim() || 'Untitled Book';
+
+  const book = {
+    id: Date.now().toString(),
+    name,
+    coverImageUrl: bookPages[selectedCoverIndex].imageDataUrl,
+    createdAt: new Date().toISOString(),
+    pages: bookPages.map(p => ({
+      imageDataUrl: p.imageDataUrl,
+      narration: p.text,
+      rawAudioData: p.rawAudioData || null
+    }))
+  };
+
+  try {
+    await saveBookToDB(book);
+    // Clear current session
+    bookPages = [];
+    lastNarrationText = null;
+    lastAudioBuffer = null;
+    lastImageDataUrl = null;
+
+    closeSaveBookDialog();
+    closePageEditor();
+    showIdleUI();
+    showStatus(`"${name}" saved!`);
+    setTimeout(hideStatus, 2000);
+  } catch (err) {
+    console.error('Failed to save book:', err);
+    showStatus('Failed to save book');
+    setTimeout(hideStatus, 2000);
+  }
+}
+
 // --- Event listeners ---
 captureBtn.addEventListener('click', processPage);
 repeatBtn.addEventListener('click', replayLastPage);
@@ -1757,6 +2005,13 @@ autoToggle.addEventListener('click', () => {
   ensureAudioContext();
   toggleAutoMode();
 });
+
+// Page editor
+pageBadge.addEventListener('click', openPageEditor);
+$('#close-editor').addEventListener('click', closePageEditor);
+$('#save-book-btn').addEventListener('click', openSaveBookDialog);
+$('#cancel-save').addEventListener('click', closeSaveBookDialog);
+$('#confirm-save').addEventListener('click', confirmSaveBook);
 
 // TTS provider toggle
 function updateTTSProviderUI() {
