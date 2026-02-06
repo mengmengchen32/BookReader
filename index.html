@@ -450,6 +450,49 @@
   }
   #page-badge.visible { display: block; }
 
+  /* Captured image display */
+  #captured-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+    z-index: 3;
+    display: none;
+    border-radius: 12px;
+  }
+  #captured-img.visible { display: block; }
+
+  /* Word highlight overlays */
+  #word-overlays {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 4;
+    pointer-events: none;
+    display: none;
+  }
+  #word-overlays.visible { display: block; }
+
+  .text-highlight {
+    position: absolute;
+    border-radius: 6px;
+    pointer-events: none;
+    background: rgba(244, 114, 182, 0.0);
+    transition: background 0.4s, box-shadow 0.4s;
+  }
+  .text-highlight.active {
+    background: rgba(244, 114, 182, 0.35);
+    box-shadow: 0 0 20px rgba(244, 114, 182, 0.5), inset 0 0 8px rgba(244, 114, 182, 0.15);
+  }
+  .text-highlight.read {
+    background: rgba(244, 114, 182, 0.12);
+  }
+
   /* Flash effect on capture */
   #flash {
     position: absolute;
@@ -791,6 +834,8 @@
 <div id="camera-container">
   <video id="video" autoplay playsinline muted></video>
   <canvas id="canvas"></canvas>
+  <img id="captured-img" alt="">
+  <div id="word-overlays"></div>
   <div id="flash"></div>
   <div id="camera-frame"></div>
 
@@ -940,6 +985,8 @@ let highlightTimers = [];
 let bookPages = []; // Array of {text, audioBuffer} for full book playback
 let isPlayingBook = false;
 let bookPlaybackIndex = 0;
+let lastImageDataUrl = null;
+let lastTextBlocks = null;
 
 // Auto page detection state
 let autoMode = false;
@@ -978,6 +1025,8 @@ const repeatBtn = $('#repeat-btn');
 const playBookBtn = $('#play-book-btn');
 const bookPageCount = $('#book-page-count');
 const pageBadge = $('#page-badge');
+const capturedImg = $('#captured-img');
+const wordOverlays = $('#word-overlays');
 
 // --- Init ---
 function init() {
@@ -1078,6 +1127,7 @@ function showIdleUI() {
   autoToggle.style.display = '';
   readingIndicator.classList.remove('visible');
   narrationOverlay.classList.remove('visible');
+  hideCapturedImage();
   clearHighlightTimers();
   // Show repeat button if we have a previous narration
   if (lastAudioBuffer) {
@@ -1172,6 +1222,106 @@ function clearHighlightTimers() {
   highlightTimers = [];
 }
 
+// --- Captured image & highlights ---
+function showCapturedImage(dataUrl, pageBounds) {
+  if (pageBounds) {
+    // Crop to page bounds using the capture canvas
+    const srcW = canvas.width;
+    const srcH = canvas.height;
+    const sx = (pageBounds.left / 100) * srcW;
+    const sy = (pageBounds.top / 100) * srcH;
+    const sw = ((pageBounds.right - pageBounds.left) / 100) * srcW;
+    const sh = ((pageBounds.bottom - pageBounds.top) / 100) * srcH;
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = sw;
+    cropCanvas.height = sh;
+    cropCanvas.getContext('2d').drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+    capturedImg.src = cropCanvas.toDataURL('image/jpeg', 0.9);
+  } else {
+    capturedImg.src = dataUrl;
+  }
+  capturedImg.classList.add('visible');
+  $('#camera-frame').style.display = 'none';
+  $('#top-bar').style.display = 'none';
+}
+
+function hideCapturedImage() {
+  capturedImg.classList.remove('visible');
+  wordOverlays.classList.remove('visible');
+  wordOverlays.innerHTML = '';
+  $('#camera-frame').style.display = '';
+  $('#top-bar').style.display = '';
+}
+
+function getImageRenderBounds() {
+  if (!capturedImg.naturalWidth || !capturedImg.naturalHeight) return null;
+  const cW = capturedImg.clientWidth;
+  const cH = capturedImg.clientHeight;
+  const nW = capturedImg.naturalWidth;
+  const nH = capturedImg.naturalHeight;
+  const imgRatio = nW / nH;
+  const cRatio = cW / cH;
+  let rW, rH, oX, oY;
+  if (imgRatio > cRatio) {
+    rW = cW; rH = cW / imgRatio; oX = 0; oY = (cH - rH) / 2;
+  } else {
+    rH = cH; rW = cH * imgRatio; oX = (cW - rW) / 2; oY = 0;
+  }
+  return { rW, rH, oX, oY };
+}
+
+function createTextHighlights(textBlocks, duration) {
+  wordOverlays.innerHTML = '';
+  const bounds = getImageRenderBounds();
+  if (!bounds || !textBlocks || textBlocks.length === 0) return;
+
+  textBlocks.forEach((block, i) => {
+    const el = document.createElement('div');
+    el.className = 'text-highlight';
+    el.dataset.idx = i;
+    el.style.left = (bounds.oX + (block.left / 100) * bounds.rW) + 'px';
+    el.style.top = (bounds.oY + (block.top / 100) * bounds.rH) + 'px';
+    el.style.width = ((block.width / 100) * bounds.rW) + 'px';
+    el.style.height = ((block.height / 100) * bounds.rH) + 'px';
+    wordOverlays.appendChild(el);
+  });
+
+  wordOverlays.classList.add('visible');
+  animateHighlights(textBlocks, duration);
+}
+
+function animateHighlights(textBlocks, duration) {
+  clearHighlightTimers();
+  if (!textBlocks || textBlocks.length === 0) return;
+
+  const totalChars = textBlocks.reduce((sum, b) => sum + b.text.length, 0);
+  let elapsed = 0;
+
+  textBlocks.forEach((block, i) => {
+    const blockDuration = (block.text.length / totalChars) * duration * 1000;
+    const timer = setTimeout(() => {
+      const prev = wordOverlays.querySelector('.text-highlight.active');
+      if (prev) {
+        prev.classList.remove('active');
+        prev.classList.add('read');
+      }
+      const el = wordOverlays.querySelector(`[data-idx="${i}"]`);
+      if (el) el.classList.add('active');
+    }, elapsed);
+    highlightTimers.push(timer);
+    elapsed += blockDuration;
+  });
+
+  const endTimer = setTimeout(() => {
+    const last = wordOverlays.querySelector('.text-highlight.active');
+    if (last) {
+      last.classList.remove('active');
+      last.classList.add('read');
+    }
+  }, duration * 1000);
+  highlightTimers.push(endTimer);
+}
+
 // --- Main flow ---
 async function processPage() {
   if (isProcessing) return;
@@ -1184,22 +1334,35 @@ async function processPage() {
   const imageData = captureFrame();
   const base64Image = imageData.replace(/^data:image\/jpeg;base64,/, '');
 
-  // Show processing state
+  // Show captured image immediately (uncropped)
+  capturedImg.src = imageData;
+  capturedImg.classList.add('visible');
+  $('#camera-frame').style.display = 'none';
+  $('#top-bar').style.display = 'none';
   captureBtn.style.display = 'none';
   hintEl.style.display = 'none';
   showStatus('Reading the page...');
 
   try {
-    // Step 1: GPT-4o Vision — read and narrate
-    const narration = await getNarration(base64Image);
-    if (!narration) throw new Error('Could not read the page');
+    // Step 1: GPT-4o Vision — read, narrate, and get word positions
+    const result = await getNarration(base64Image);
+    if (!result || !result.narration) throw new Error('Could not read the page');
 
-    lastNarrationText = narration;
+    lastNarrationText = result.narration;
+    lastTextBlocks = result.text_blocks || [];
+
+    // Crop to page bounds if available
+    if (result.page_bounds) {
+      showCapturedImage(imageData, result.page_bounds);
+    }
+    // Save the displayed image URL for replay
+    lastImageDataUrl = capturedImg.src;
+
     showStatus('Preparing to read aloud...');
     showReadingUI();
 
     // Step 2: TTS — speak the narration
-    await speakNarration(narration);
+    await speakNarration(result.narration, lastTextBlocks);
 
   } catch (err) {
     console.error(err);
@@ -1223,9 +1386,9 @@ async function getNarration(base64Image) {
 
   let langInstruction;
   if (responseLang === 'Chinese') {
-    langInstruction = 'If the book is in Chinese, read it in Chinese. If the book is in English, read the English text as written.';
+    langInstruction = 'If the book is in Chinese, narrate in Chinese. If in English, read as written.';
   } else if (responseLang === 'English') {
-    langInstruction = 'If the book is in English, read it in English. If the text is Chinese, read it in Chinese.';
+    langInstruction = 'If the book is in English, narrate in English. If Chinese, read in Chinese.';
   } else {
     langInstruction = 'Read the text in whatever language it is written in.';
   }
@@ -1238,39 +1401,41 @@ async function getNarration(base64Image) {
     },
     body: JSON.stringify({
       model: 'gpt-4o',
-      max_tokens: 2048,
+      max_tokens: 4096,
+      response_format: { type: 'json_object' },
       messages: [
         {
           role: 'system',
-          content: `You are the world's most DRAMATIC and THEATRICAL children's book storyteller! You are reading to Hunter, a 3-year-old boy sitting in your lap. You use your voice like an instrument — whispering for suspense, booming for excitement, gasping in surprise!
+          content: `You are the world's most DRAMATIC children's book storyteller reading to Hunter, a 3-year-old. Return a JSON object with this EXACT structure:
 
-RULES:
-1. Read EVERY SINGLE WORD printed on this book page. Do not skip or summarize. Look closely at ALL text — headers, body, speech bubbles, captions. Stay completely faithful to what's written.
-2. Do NOT describe illustrations. Do NOT add words that aren't in the book.
-3. Output ONLY spoken words — no brackets, no stage directions, no labels, no "Page 1:" markers.
-4. If the image shows a TWO-PAGE SPREAD (left and right pages visible), ALWAYS read the LEFT page first, then the RIGHT page. Follow normal reading order: left-to-right, top-to-bottom.
-5. NEVER let the drama fade! Every single sentence must be performed with maximum theatrical energy from start to finish. The LAST sentence should be just as dramatic as the FIRST.
+{
+  "narration": "Your dramatic reading here...",
+  "page_bounds": {"top": 5, "left": 3, "bottom": 95, "right": 97},
+  "text_blocks": [
+    {"text": "Once upon a time", "top": 20, "left": 10, "width": 80, "height": 8}
+  ]
+}
 
-CRITICAL — format the text so a text-to-speech engine sounds ALIVE and DRAMATIC:
-- "..." before scary or surprising moments (build suspense!)
-- "!" for excitement — use liberally! Children love energy!
-- CAPITALIZE words that should be loud or emphasized
-- Stretch dramatic words: "huuuuge", "tiiiiiny", "sloooowly", "veeeery"
-- "—" for sudden dramatic pauses or interruptions
-- "Ohhh!" "Wooow!" "Oh noooo!" — add emotional reactions where the text calls for them
-- Each sentence on its own line so TTS pauses between them
-- For dialogue, give each character's voice a different energy
-- Whispered parts: write in lowercase with lots of spaces: "and   then...   very   quietly..."
+FIELDS:
+- "narration": Your theatrical, expressive reading of ALL text on the page. This goes to text-to-speech so make it ALIVE!
+- "page_bounds": Where the actual book page is in the photo — {top, left, bottom, right} as percentages (0-100) of the FULL IMAGE. This crops out the table/background around the book.
+- "text_blocks": Every visible text region on the page, in reading order. Coordinates (top, left, width, height) are percentages (0-100) RELATIVE TO THE PAGE BOUNDS (not the full photo). Top-left corner of the page = 0,0.
 
-REMEMBER: You are PERFORMING, not just reading. Keep the energy at 100% for EVERY line. A bored storyteller loses a 3-year-old instantly!
+NARRATION RULES — You are PERFORMING, not just reading!
+1. Read EVERY SINGLE WORD — headers, body, speech bubbles, captions. Never skip!
+2. Do NOT describe illustrations or add words not in the book.
+3. For TWO-PAGE SPREADS, read LEFT page first, then RIGHT.
+4. NEVER let the drama fade — every sentence at MAXIMUM theatrical energy!
+5. Format for TTS: "..." for suspense, "!" for excitement, CAPITALIZE for emphasis, stretch words like "huuuuge" and "sloooowly", "—" for dramatic pauses.
+6. Add reactions: "Ohhh!", "Wooow!", "Oh noooo!" where the text calls for them.
+7. Each sentence on its own line in the narration.
+8. Whispered parts: lowercase with spaces: "and   then...   very   quietly..."
 
-Example:
-Ohhh... once upon a time...
-there was a VEEEERY hungry caterpillar!
-He ate through ONE apple...
-but he was STILL hungry!
-And then — oh my!
-He ate through TWOOO pears!
+TEXT_BLOCKS RULES:
+- Include ALL visible text — titles, body text, labels, speech bubbles, page numbers
+- Each block = one line or logical text group
+- Be PRECISE with bounding boxes — they will be drawn as highlights on the image
+- Coordinates are relative to the PAGE area (after cropping to page_bounds)
 
 ${langInstruction}`
         },
@@ -1283,7 +1448,7 @@ ${langInstruction}`
             },
             {
               type: 'text',
-              text: 'Read this book page with maximum drama and expression!'
+              text: 'Read this book page with maximum drama! Return JSON with narration, page_bounds, and text_blocks.'
             }
           ]
         }
@@ -1297,7 +1462,15 @@ ${langInstruction}`
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content?.trim();
+  const content = data.choices?.[0]?.message?.content?.trim();
+  if (!content) return null;
+
+  try {
+    return JSON.parse(content);
+  } catch (e) {
+    // Fallback: treat as plain text (old format)
+    return { narration: content, text_blocks: [], page_bounds: null };
+  }
 }
 
 // --- TTS Providers ---
@@ -1362,7 +1535,7 @@ async function elevenLabsTTS(text) {
 }
 
 // --- TTS Orchestration ---
-async function speakNarration(text) {
+async function speakNarration(text, textBlocks) {
   const provider = localStorage.getItem('tts_provider') || 'openai';
 
   let arrayBuffer;
@@ -1377,17 +1550,17 @@ async function speakNarration(text) {
       // Store for replay
       lastAudioBuffer = audioBuffer;
 
-      // Save page to book history
-      bookPages.push({ text, audioBuffer });
+      // Save page to book history (with image and text blocks)
+      bookPages.push({ text, audioBuffer, imageDataUrl: lastImageDataUrl, textBlocks: textBlocks || [] });
 
-      playAudioBuffer(audioBuffer, text, resolve);
+      playAudioBuffer(audioBuffer, text, resolve, textBlocks);
     }, (err) => {
       reject(new Error('Audio decode failed'));
     });
   });
 }
 
-function playAudioBuffer(audioBuffer, text, onDone) {
+function playAudioBuffer(audioBuffer, text, onDone, textBlocks) {
   // Stop any currently playing audio
   if (currentAudio) {
     try { currentAudio.stop(); } catch(e) {}
@@ -1400,8 +1573,10 @@ function playAudioBuffer(audioBuffer, text, onDone) {
   source.connect(audioCtx.destination);
   currentAudio = source;
 
-  // Show narration text with highlighting
-  if (text) {
+  // Show highlights on captured image, or fallback to text overlay
+  if (textBlocks && textBlocks.length > 0 && capturedImg.classList.contains('visible')) {
+    createTextHighlights(textBlocks, audioBuffer.duration);
+  } else if (text) {
     showNarration(text, audioBuffer.duration);
   }
 
@@ -1434,11 +1609,15 @@ function replayLastPage() {
   if (!lastAudioBuffer || !lastNarrationText || isProcessing) return;
   isProcessing = true;
   ensureAudioContext();
+  // Show captured image for replay
+  if (lastImageDataUrl) {
+    showCapturedImage(lastImageDataUrl);
+  }
   showReadingUI();
   playAudioBuffer(lastAudioBuffer, lastNarrationText, () => {
     isProcessing = false;
     showIdleUI();
-  });
+  }, lastTextBlocks);
 }
 
 // --- Play Full Book ---
@@ -1454,7 +1633,6 @@ function playFullBook() {
 
 function playNextBookPage() {
   if (bookPlaybackIndex >= bookPages.length || !isPlayingBook) {
-    // Book finished
     isPlayingBook = false;
     isProcessing = false;
     showIdleUI();
@@ -1462,15 +1640,18 @@ function playNextBookPage() {
   }
 
   const page = bookPages[bookPlaybackIndex];
-  // Update reading indicator with page number
   const label = readingIndicator.querySelector('.label');
   label.textContent = `Page ${bookPlaybackIndex + 1} of ${bookPages.length}`;
 
+  // Show this page's captured image
+  if (page.imageDataUrl) {
+    showCapturedImage(page.imageDataUrl);
+  }
+
   playAudioBuffer(page.audioBuffer, page.text, () => {
     bookPlaybackIndex++;
-    // Brief pause between pages
     setTimeout(() => playNextBookPage(), 800);
-  });
+  }, page.textBlocks);
 }
 
 // --- Auto page detection ---
